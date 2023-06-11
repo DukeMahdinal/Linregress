@@ -8,6 +8,12 @@ from matplotlib.widgets import TextBox
 x = np.array([1, 2, 3, 4, 5])
 y = np.array([2, 3.5, 4.2, 5.1, 6])
 
+
+
+# this is just for the test
+
+
+
 # linear regression
 slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
