@@ -126,7 +126,12 @@ def add_point():
                     coll.remove()
                 elif coll.get_facecolor()[0][0] == 1: # check if collection is yellow
                     coll.remove()
+            for coll in ax.collections:
+                if coll.get_facecolor()[0][1] == 1: # check if collection is green
+                    coll.remove()
             ax.scatter(x, y, color='green')
+            for i in range(len(x)):
+                ax.text(x[i], y[i], f'({x[i]:.{min(4, len(str(x[i]).split(".")[1]))}f},{y[i]:.{min(4, len(str(y[i]).split(".")[1]))}f})')
             # remove text objects displaying coordinates of blue points
             for txt in ax.texts:
                 if txt != fit_text and txt != text_artist:
@@ -148,7 +153,12 @@ def add_point():
                 if coll.get_facecolor()[0][2] == 1: # check if collection is blue
                     coll.remove()
             line.set_data([], []) # clear line plot
+            for coll in ax.collections:
+                if coll.get_facecolor()[0][1] == 1: # check if collection is green
+                    coll.remove()
             ax.scatter(x, y, color='green')
+            for i in range(len(x)):
+                ax.text(x[i], y[i], f'({x[i]:.{min(4, len(str(x[i]).split(".")[1]))}f},{y[i]:.{min(4, len(str(y[i]).split(".")[1]))}f})')
             # remove text object displaying coordinates of existing data point
             for txt in ax.texts:
                 if txt != fit_text and txt != text_artist:
@@ -164,7 +174,12 @@ def add_point():
 
         else:
             # add new data point to chart
+            for coll in ax.collections:
+                if coll.get_facecolor()[0][1] == 1: # check if collection is green
+                    coll.remove()
             ax.scatter(x_val,y_val,color='green')
+            for i in range(len(x)):
+                ax.text(x[i], y[i], f'({x[i]:.{min(4, len(str(x[i]).split(".")[1]))}f},{y[i]:.{min(4, len(str(y[i]).split(".")[1]))}f})')
             # display coordinates above dot with full precision
             ax.text(x_val,y_val,f'({x_val:.{min(4, len(str(x_val).split(".")[1]))}f},{y_val:.{min(4, len(str(y_val).split(".")[1]))}f})', fontsize=8)
             # add new data point to data arrays
@@ -177,8 +192,6 @@ def add_point():
     if len(x) > 1:
         analyze_button.config(state=tk.NORMAL)
     canvas.draw()
-
-
 
 def analyze():
     global x,y,slope,x_fit,line,intercept,ani
