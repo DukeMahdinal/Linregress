@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
 import webbrowser
+from tkinter import messagebox
 
 # sample data
 x = np.array([])
@@ -32,68 +33,49 @@ if len(x) > 0 and len(y) > 0:
 else:
     fit_text = plt.text(0.5, -0.2,'', ha='center', va='center', transform=plt.gca().transAxes)
 
+
 def import_data():
-    global x, y
+    global x,y,slope,x_fit,line, fit_text, text_artist
+    # open file dialog to select excel file
     filename = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx")])
-    if filename:
+    # check if filename is not empty
+    if not filename:
+        return
+    # read data from excel file
+    try:
         data = pd.read_excel(filename)
-        new_x = data['x'].values
-        new_y = data['y'].values
-        for i in range(len(new_x)):
-            if new_x[i] in x:
-                index = np.where(x == new_x[i])[0][0]
-                y[index] = new_y[i]
-            else:
-                x = np.append(x, new_x[i])
-                y = np.append(y, new_y[i])
-        for coll in ax.collections:
-            coll.remove()
-        for txt in ax.texts:
-            if txt != fit_text and txt != text_artist:
-                txt.remove()
-        ax.scatter(x, y, color='green')
-        for i in range(len(x)):
-            ax.text(x[i], y[i], f'({x[i]:.{min(4, len(str(x[i]).split(".")[1]))}f},{y[i]:.{min(4, len(str(y[i]).split(".")[1]))}f})')
-        if len(x) > 1:
-            analyze_button.config(state=tk.NORMAL)
-        canvas.draw()
+    except FileNotFoundError:
+        messagebox.showerror("Error", f"File not found: {filename}")
+        return
+    # get x and y values from data
+    x_vals = data['x'].values
+    y_vals = data['y'].values
+    # check if there are already data points with the same x-values on the canvas
+    mask = np.isin(x_vals, x)
+    # discard values from excel file that are already on the canvas
+    x_vals = x_vals[~mask]
+    y_vals = y_vals[~mask]
+    # add new data points to chart
+    ax.scatter(x_vals,y_vals,color='green')
+    for i in range(len(x_vals)):
+        ax.text(x_vals[i], y_vals[i], f'({x_vals[i]:.{min(4, len(str(x_vals[i]).split(".")[1]))}f},{y_vals[i]:.{min(4, len(str(y_vals[i]).split(".")[1]))}f})')
+    # add new data points to data arrays
+    x = np.append(x,x_vals)
+    y = np.append(y,y_vals)
+    # enable analyze button if there is more than one data point
+    if len(x) > 1:
+        analyze_button.config(state=tk.NORMAL)
+    canvas.draw()
 
 def validate_input():
-    # Get contents of x_entry and y_entry input fields
-    x_val = x_entry.get()
-    y_val = y_entry.get()
-    # Check if x input field is not empty and contains only numbers
-    if x_val and x_val.replace('.', '', 1).isdigit():
-        # Check if a data point with this x-value already exists
-        if float(x_val) in x:
-            # Check if y input field is not empty and contains only numbers or is "x" or "X"
-            if y_val and (y_val.replace('.', '', 1).isdigit() or y_val.lower() == "x"):
-                # Enable ADD/UPDATE/DELETE button
-                add_button.config(state=tk.NORMAL)
-                # Change text on ADD/UPDATE/DELETE button based on y input
-                if y_val.lower() == "x":
-                    add_button.config(text="DELETE")
-                else:
-                    add_button.config(text="UPDATE")
-            else:
-                # Disable ADD/UPDATE/DELETE button
-                add_button.config(state=tk.DISABLED)
-                # Change text on ADD/UPDATE/DELETE button to UPDATE
-                add_button.config(text="UPDATE")
+    try:
+        x_val = float(x_entry.get())
+        y_val = float(y_entry.get())
+        if x_val in x:
+            add_button.config(state=tk.DISABLED)
         else:
-            # Change text on ADD/UPDATE/DELETE button to ADD
-            add_button.config(text="ADD")
-            # Check if y input field is not empty and contains only numbers or is "x" or "X"
-            if y_val and (y_val.replace('.', '', 1).isdigit() or y_val.lower() == "x"):
-                # Enable ADD/DELETE button
-                add_button.config(state=tk.NORMAL)
-            else:
-                # Disable ADD/DELETE button
-                add_button.config(state=tk.DISABLED)
-    else:
-        # Change text on ADD/UPDATE/DELETE button to ADD
-        add_button.config(text="ADD")
-        # Disable ADD/UPDATE/DELETE button
+            add_button.config(state=tk.NORMAL)
+    except ValueError:
         add_button.config(state=tk.DISABLED)
 
 def animate(i):
@@ -109,67 +91,19 @@ def add_point():
     global x,y,slope,x_fit,line, fit_text, text_artist
     # get entered x and y values for new data point
     x_val = float(x_entry.get())
-    y_val = y_entry.get()
-    if y_val.lower() == "x":
-        # delete data point with matching x-value
-        if x_val in x:
-            index = np.where(x == x_val)[0][0]
-            x = np.delete(x, index)
-            y = np.delete(y, index)
-            # reset fit line and its formula
-            line.set_data([], []) # clear line plot
-            fit_text.set_text('y = mx + b')
-            calc_button.config(state=tk.DISABLED)
-            # update chart
-            for coll in ax.collections:
-                if coll.get_facecolor()[0][2] == 1 or coll.get_facecolor()[0][1] == 1: # check if collection is blue
-                    coll.remove()
-                elif coll.get_facecolor()[0][0] == 1: # check if collection is yellow
-                    coll.remove()
-            ax.scatter(x, y, color='green')
-            # remove text objects displaying coordinates of blue points
-            for txt in ax.texts:
-                if txt != fit_text and txt != text_artist:
-                    try:
-                        float(txt.get_text().split(',')[0][1:])
-                        txt.remove()
-                    except ValueError:
-                        pass
+    y_val = float(y_entry.get())
 
-    else:
-        y_val = float(y_val)
-        # check if a data point with the same x-value already exists
-        if x_val in x:
-            # update y-value of existing data point
-            index = np.where(x == x_val)[0][0]
-            y[index] = y_val
-            # update chart
-            for coll in ax.collections:
-                if coll.get_facecolor()[0][2] == 1: # check if collection is blue
-                    coll.remove()
-            line.set_data([], []) # clear line plot
-            ax.scatter(x, y, color='green')
-            # remove text object displaying coordinates of existing data point
-            for txt in ax.texts:
-                if txt != fit_text and txt != text_artist:
-                    try:
-                        float(txt.get_text().split(',')[0][1:])
-                        if abs(txt.get_position()[0] - x_val) < 1e-6:
-                            txt.remove()
-                    except ValueError:
-                        pass
-            
-            # create new text object displaying coordinates of updated data point
-            ax.text(x_val,y_val,f'({x_val:.{min(4, len(str(x_val).split(".")[1]))}f},{y_val:.{min(4, len(str(y_val).split(".")[1]))}f})', fontsize=8)
+    # add new data point to chart
+    for coll in ax.collections:
+        if coll.get_facecolor()[0][1] == 1: # check if collection is green
+            coll.remove()
+    ax.scatter(x_val,y_val,color='green')
+    # display coordinates above dot with full precision
+    ax.text(x_val,y_val,f'({x_val:.{min(4, len(str(x_val).split(".")[1]))}f},{y_val:.{min(4, len(str(y_val).split(".")[1]))}f})', fontsize=8)
+    # add new data point to data arrays
+    x = np.append(x,x_val)
+    y = np.append(y,y_val)
 
-        else:
-            # add new data point to chart
-            ax.scatter(x_val,y_val,color='green')
-            # display coordinates above dot with full precision
-            ax.text(x_val,y_val,f'({x_val:.{min(4, len(str(x_val).split(".")[1]))}f},{y_val:.{min(4, len(str(y_val).split(".")[1]))}f})', fontsize=8)
-            # add new data point to data arrays
-            x = np.append(x,x_val)
-            y = np.append(y,y_val)
     # clear input fields
     x_entry.delete(0,'end')
     y_entry.delete(0,'end')
@@ -177,8 +111,6 @@ def add_point():
     if len(x) > 1:
         analyze_button.config(state=tk.NORMAL)
     canvas.draw()
-
-
 
 def analyze():
     global x,y,slope,x_fit,line,intercept,ani
@@ -223,6 +155,35 @@ def analyze():
     calc_button.config(state=tk.NORMAL)
     canvas.draw()
 
+def newton_interpolation(x_vals, y_vals):
+    global x,y,slope,x_fit,line, fit_text, text_artist
+    # calculate divided differences
+    n = len(x_vals)
+    div_diffs = np.zeros((n, n))
+    div_diffs[:, 0] = y_vals
+    for j in range(1, n):
+        for i in range(n-j):
+            div_diffs[i][j] = (div_diffs[i+1][j-1] - div_diffs[i][j-1]) / (x_vals[i+j] - x_vals[i])
+    # calculate coefficients of polynomial
+    coeffs = div_diffs[0]
+    # define function to evaluate polynomial
+    def f(x):
+        result = coeffs[-1]
+        for i in range(n-2, -1, -1):
+            result = result * (x - x_vals[i]) + coeffs[i]
+        return result
+    # plot polynomial
+    x_fit = np.linspace(np.min(x_vals), np.max(x_vals), 100)
+    y_fit = f(x_fit)
+    line.set_data(x_fit, y_fit)
+    # display formula of polynomial
+    formula = f'P(x) = {coeffs[0]:.4f}'
+    for i in range(1, n):
+        formula += f' + {coeffs[i]:.4f}'
+        for j in range(i):
+            formula += f'(x - {x_vals[j]:.4f})'
+    fit_text.set_text(formula)
+    canvas.draw()
 
 def reset():
     global x,y,slope,x_fit,line, fit_text, text_artist
@@ -507,6 +468,10 @@ duke_label.bind("<Button-1>", lambda e: webbrowser.open("https://t.me/TheOneWhoC
 # Create label with "~~" text
 end_label = tk.Label(dev_frame, text=" ~~")
 end_label.grid(row=0, column=2)
+
+# Create the Newton Interpolation button
+newton_button = tk.Button(master=frame(3,9), text="Newton Interpolation", command=lambda: newton_interpolation(x, y))
+newton_button.pack(anchor="w", padx=(0, 0) , pady=(14 ,0))
 
 # Make all labels bold and underlined with font size 12
 for label in [dev_label, duke_label, end_label]:
